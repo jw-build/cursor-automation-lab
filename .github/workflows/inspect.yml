@@ -12,13 +12,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
+      - name: Check Python
+        run: |
+          python3 --version
+          which python3
 
       - name: Run inspect and save report
-        run: python3 automation/cli.py inspect | tee inspect-report.txt
+        run: |
+          python3 automation/cli.py inspect | tee inspect-report.txt
 
       - name: Upload inspect-report artifact
         uses: actions/upload-artifact@v4
