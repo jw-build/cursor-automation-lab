@@ -21,10 +21,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 automation/cli.py inspect --disk-warn 80 --mem-warn 85 | tee inspect-report.txt
+          mkdir -p reports
+          DATE=$(date +%Y-%m-%d)
+          python3 automation/cli.py inspect --disk-warn 80 --mem-warn 85 | tee reports/latest.txt "reports/${DATE}.txt"
 
-      - name: Upload inspect-report artifact
+      - name: Upload inspect-report artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: inspect-report
-          path: inspect-report.txt
+          name: inspect-reports
+          path: reports/
