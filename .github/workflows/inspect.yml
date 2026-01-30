@@ -1,0 +1,27 @@
+name: host-inspect
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run inspect and save report
+        run: python3 automation/cli.py inspect | tee inspect-report.txt
+
+      - name: Upload inspect-report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspect-report
+          path: inspect-report.txt
