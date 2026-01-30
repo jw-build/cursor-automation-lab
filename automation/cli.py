@@ -6,6 +6,7 @@ import argparse
 import getpass
 import shutil
 import socket
+import sys
 from datetime import datetime
 
 
@@ -57,14 +58,15 @@ def _get_disk_usage() -> tuple[float, str]:
     return (pct, s)
 
 
-def _get_memory_usage_str() -> str:
+def _get_memory_usage() -> tuple[float, str]:
     with open("/proc/meminfo") as f:
         lines = {k: int(v.split()[0]) * 1024 for k, v in (line.split(":", 1) for line in f)}
     total = lines.get("MemTotal", 0)
     available = lines.get("MemAvailable", lines.get("MemFree", 0))
     used = total - available
-    pct = 100 * used / total if total else 0
-    return f"{format_bytes(used)} used / {format_bytes(total)} total ({pct:.0f}%)"
+    pct = 100 * used / total if total else 0.0
+    s = f"{format_bytes(used)} used / {format_bytes(total)} total ({pct:.0f}%)"
+    return (pct, s)
 
 
 # -----------------------------------------------------------------------------
@@ -87,15 +89,22 @@ def cmd_sysinfo(_args: argparse.Namespace) -> None:
     print(fmt_field("uptime", uptime_str))
 
 
-def cmd_inspect(_args: argparse.Namespace) -> None:
+def cmd_inspect(args: argparse.Namespace) -> None:
+    disk_warn = args.disk_warn
+    mem_warn = args.mem_warn
     uptime_str = _format_uptime(_read_uptime_seconds())
     print(fmt_field("hostname", socket.gethostname()))
     print(fmt_field("user", getpass.getuser()))
     print(fmt_field("uptime", uptime_str))
     disk_pct, disk_str = _get_disk_usage()
+    disk_bad = disk_pct >= disk_warn
     print(fmt_field("disk", disk_str))
-    print(fmt_field("disk status", "WARNING" if disk_pct > 80 else "OK"))
-    print(fmt_field("memory", _get_memory_usage_str()))
+    print(fmt_field("disk status", "WARNING" if disk_bad else "OK"))
+    mem_pct, mem_str = _get_memory_usage()
+    mem_bad = mem_pct >= mem_warn
+    print(fmt_field("memory", mem_str))
+    print(fmt_field("memory status", "WARNING" if mem_bad else "OK"))
+    sys.exit(2 if (disk_bad or mem_bad) else 0)
 
 
 # -----------------------------------------------------------------------------
@@ -118,7 +127,22 @@ def parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     for name, help_text, _ in COMMANDS:
-        subparsers.add_parser(name, help=help_text)
+        p = subparsers.add_parser(name, help=help_text)
+        if name == "inspect":
+            p.add_argument(
+                "--disk-warn",
+                type=int,
+                default=80,
+                metavar="PCT",
+                help="Disk usage %% threshold for WARNING (default: 80)",
+            )
+            p.add_argument(
+                "--mem-warn",
+                type=int,
+                default=85,
+                metavar="PCT",
+                help="Memory usage %% threshold for WARNING (default: 85)",
+            )
 
     return parser.parse_args()
 

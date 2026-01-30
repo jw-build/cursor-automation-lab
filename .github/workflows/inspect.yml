@@ -18,8 +18,10 @@ jobs:
           which python3
 
       - name: Run inspect and save report
+        shell: bash
         run: |
-          python3 automation/cli.py inspect | tee inspect-report.txt
+          set -euo pipefail
+          python3 automation/cli.py inspect --disk-warn 80 --mem-warn 85 | tee inspect-report.txt
 
       - name: Upload inspect-report artifact
         uses: actions/upload-artifact@v4
